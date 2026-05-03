@@ -1,19 +1,15 @@
 @echo off
-REM Ensure we're on master/main first
-git checkout master 2>nul || git checkout main
+REM Set the correct remote URL
+git remote set-url origin https://github.com/AdamBILHAJ/DevEventsNextjs.git
 
-REM Create develop branch if it doesn't exist
+REM Stage all changes
+git add .
+
+REM Create develop branch only if it doesn't exist
 git show-ref --verify --quiet refs/heads/develop || git branch develop
 
-REM Add files and commit
-git add .
+REM Commit (will succeed even if nothing new to commit? but fine)
 git commit -m "home page 1"
 
-REM Add remote only if it doesn't exist
-git remote get-url origin >nul 2>&1
-if errorlevel 1 (
-    git remote add origin https://github.com/AdamBILHAJ/DevEventsNextjs.git
-)
-
-REM Push current branch to main on remote
+REM Push the current branch to remote main
 git push -u origin HEAD:main
