@@ -10,7 +10,6 @@ function ExploreBtn() {
         id="explore-btn"
         className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
         onClick={() => {
-          console.log('CLICK');
           posthog.capture('explore_events_clicked');
         }}
       >
