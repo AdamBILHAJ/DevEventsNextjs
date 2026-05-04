@@ -138,11 +138,26 @@ function generateSlug(title: string): string {
 
 // Helper function to normalize date to ISO format
 function normalizeDate(dateString: string): string {
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) {
-    throw new Error('Invalid date format');
+  const trimmed = dateString.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (!match) {
+    throw new Error('Invalid date format. Use YYYY-MM-DD');
   }
-  return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day
+  ) {
+    throw new Error('Invalid date value');
+  }
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
 // Helper function to normalize time format
