@@ -16,7 +16,7 @@ const EventCard = ({ title, image, slug, location, date, time }: Props) => {
     return (
         <Link
             href={`/events/${slug}`}
-            id="event-card"
+            className="event-card"
             onClick={() => posthog.capture('event_card_clicked', {
                 event_title: title,
                 event_slug: slug,
