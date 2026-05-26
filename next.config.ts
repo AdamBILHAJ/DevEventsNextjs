@@ -1,7 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /*experimental: {
+    // This tells the dev server to trust requests from your local machine/tools
+    allowedDevOrigins: ["localhost:3000", "http://localhost:3000"]
+  } as any,*/
   /* config options here */
+  images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'res.cloudinary.com',
+            }
+        ]
+    },
   cacheComponents:true,
   reactCompiler: true,
   async rewrites() {
@@ -20,7 +32,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  skipTrailingSlashRedirect: true,
+  skipTrailingSlashRedirect: true,  
 };
-
 export default nextConfig;
