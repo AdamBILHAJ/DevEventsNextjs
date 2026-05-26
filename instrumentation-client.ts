@@ -1,7 +1,4 @@
 import posthog from "posthog-js";
-
-import posthog from "posthog-js";
-
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 
 if (posthogToken) {
