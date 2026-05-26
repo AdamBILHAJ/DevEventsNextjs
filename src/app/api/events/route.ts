@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
 
         // 2. Extract and parse Multipart Form Data
         const formData = await req.formData();
-        let event: Record<string, any>;
+        type EventPayload = Record<string, FormDataEntryValue | FormDataEntryValue[]>;
+        let event: EventPayload;
 
         try {
             // 3. Convert FormData to flat JS object
