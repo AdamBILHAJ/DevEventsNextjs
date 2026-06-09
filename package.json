@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mongo-sanitize": "^1.0.3",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
