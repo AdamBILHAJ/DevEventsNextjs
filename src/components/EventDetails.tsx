@@ -1,13 +1,14 @@
 import React from 'react'
-import {notFound} from "next/navigation";
+import { notFound } from "next/navigation";
 import { IEvent } from "@/database/event.model"
-import {getSimilarEventsBySlug} from "@/lib/actions/event.actions";
+// 1. Import your Mongoose model and connection helper directly!
+import connectDB from "@/lib/mongodb";
+import Event from "@/database/event.model";
+import { getSimilarEventsBySlug } from "@/lib/actions/event.actions";
 import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
 import EventCard from "@/components/EventCard";
-import {cacheLife} from "next/cache";
-
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+import { cacheLife } from "next/cache";
 
 const EventDetailItem = ({ icon, alt, label }: { icon: string; alt: string; label: string; }) => (
     <div className="flex-row-gap-2 items-center">
@@ -42,34 +43,34 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
 
     let event;
     try {
-        const request = await fetch(`${BASE_URL}/api/events/${slug}`, {
-            next: { revalidate: 60 }
-        });
+        // 2. Connect directly to MongoDB from the server component
+        await connectDB();
+        
+        // Find the event by slug natively, convert it to a plain JSON object (.lean())
+        const databaseRecord = await Event.findOne({ slug }).lean();
 
-        if (!request.ok) {
-            if (request.status === 404) {
-                return notFound();
-            }
-            throw new Error(`Failed to fetch event: ${request.statusText}`);
-        }
-
-        const response = await request.json();
-        event = response.event;
-
-        if (!event) {
+        if (!databaseRecord) {
             return notFound();
         }
+
+        // 3. Serialize your document properties smoothly for Client Components
+        event = {
+            ...databaseRecord,
+            _id: databaseRecord._id.toString(),
+            createdAt: databaseRecord.createdAt ? new Date(databaseRecord.createdAt).toISOString() : undefined,
+            updatedAt: databaseRecord.updatedAt ? new Date(databaseRecord.updatedAt).toISOString() : undefined,
+        };
+
     } catch (error) {
-        console.error('Error fetching event:', error);
+        console.error('Error querying event directly from DB:', error);
         return notFound();
     }
 
     const { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer } = event;
 
-    if(!description) return notFound();
+    if (!description) return notFound();
 
-    const bookings = 10;
-
+    const bookings = 10; // has to be form db
     const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
 
     return (
@@ -80,7 +81,7 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
             </div>
 
             <div className="details">
-                {/*    Left Side - Event Content */}
+                {/* Left Side - Event Content */}
                 <div className="content">
                     <Image src={image} alt="Event Banner" width={800} height={800} className="banner" />
 
@@ -91,7 +92,6 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
 
                     <section className="flex-col-gap-2">
                         <h2>Event Details</h2>
-
                         <EventDetailItem icon="/icons/calendar.svg" alt="calendar" label={date} />
                         <EventDetailItem icon="/icons/clock.svg" alt="clock" label={time} />
                         <EventDetailItem icon="/icons/pin.svg" alt="pin" label={location} />
@@ -109,7 +109,7 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
                     <EventTags tags={tags} />
                 </div>
 
-                {/*    Right Side - Booking Form */}
+                {/* Right Side - Booking Form */}
                 <aside className="booking">
                     <div className="signup-card">
                         <h2>Book Your Spot</h2>
@@ -117,42 +117,38 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
                             <p className="text-sm">
                                 Join {bookings} people who have already booked their spot!
                             </p>
-                        ): (
+                        ) : (
                             <p className="text-sm">Be the first to book your spot!</p>
                         )}
 
-                        <BookEvent eventId={event._id.toString()} slug={event.slug} />
+                        <BookEvent eventId={event._id} slug={event.slug} />
                     </div>
                 </aside>
             </div>
 
             {similarEvents && similarEvents.length > 0 && (
-    <div className="flex w-full flex-col gap-4 pt-20">
-        <h2>Similar Events</h2>
-        <div className="events">
-            {similarEvents.map((similarEvent: any) => {
-                // Flatten complex database properties into plain primitives
-                const plainEvent = {
-                    ...similarEvent,
-                    // 1. Convert Mongoose ObjectId to plain string
-                    _id: similarEvent._id.toString(),
-                    
-                    // 2. Safely convert native Date objects to string timestamps
-                    createdAt: similarEvent.createdAt instanceof Date 
-                        ? similarEvent.createdAt.toISOString() 
-                        : similarEvent.createdAt?.toString(),
-                        
-                    updatedAt: similarEvent.updatedAt instanceof Date 
-                        ? similarEvent.updatedAt.toISOString() 
-                        : similarEvent.updatedAt?.toString(),
-                };
-                
-                return <EventCard key={plainEvent._id} {...plainEvent} />;
-            })}
-        </div>
-    </div>
-)}
+                <div className="flex w-full flex-col gap-4 pt-20">
+                    <h2>Similar Events</h2>
+                    <div className="events">
+                        {similarEvents.map((similarEvent: any) => {
+                            const plainEvent = {
+                                ...similarEvent,
+                                _id: similarEvent._id.toString(),
+                                createdAt: similarEvent.createdAt instanceof Date 
+                                    ? similarEvent.createdAt.toISOString() 
+                                    : similarEvent.createdAt?.toString(),
+                                updatedAt: similarEvent.updatedAt instanceof Date 
+                                    ? similarEvent.updatedAt.toISOString() 
+                                    : similarEvent.updatedAt?.toString(),
+                            };
+                            
+                            return <EventCard key={plainEvent._id} {...plainEvent} />;
+                        })}
+                    </div>
+                </div>
+            )}
         </section>
     )
 }
-export default EventDetails
+
+export default EventDetails;
