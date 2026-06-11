@@ -36,7 +36,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'image required' }, { status: 400 });
         }
 
+        const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+        const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
         if (rawImage instanceof File && rawImage.size > 0) {
+            if (rawImage.size > MAX_IMAGE_BYTES) {
+                return NextResponse.json({ message: 'image too large' }, { status: 413 });
+            }
+            if (!ALLOWED_IMAGE_TYPES.has(rawImage.type)) {
+                return NextResponse.json({ message: 'unsupported image type' }, { status: 400 });
+            }
             const arrayBuffer = await rawImage.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
 
