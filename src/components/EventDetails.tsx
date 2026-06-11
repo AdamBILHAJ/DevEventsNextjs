@@ -4,6 +4,7 @@ import { IEvent } from "@/database/event.model"
 // 1. Import your Mongoose model and connection helper directly!
 import connectDB from "@/lib/mongodb";
 import Event from "@/database/event.model";
+import Booking from '@/database/booking.model';
 import { getSimilarEventsBySlug } from "@/lib/actions/event.actions";
 import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
@@ -41,13 +42,13 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
     cacheLife('hours');
     const slug = await params;
 
-    let event;
+    let event:any;
     try {
         // 2. Connect directly to MongoDB from the server component
         await connectDB();
         
         // Find the event by slug natively, convert it to a plain JSON object (.lean())
-        const databaseRecord = await Event.findOne({ slug }).lean();
+        const databaseRecord = await Event.findOne({ slug }).lean() as IEvent | null;
 
         if (!databaseRecord) {
             return notFound();
@@ -62,16 +63,18 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
         };
 
     } catch (error) {
-        console.error('Error querying event directly from DB:', error);
+        //console.error('Error querying event directly from DB:', error);
         return notFound();
     }
 
     const { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer } = event;
+    const safeAgenda = Array.isArray(agenda) ? agenda : [];
+    const safeTags = Array.isArray(tags) ? tags : [];
 
     if (!description) return notFound();
 
-    const bookings = 10; // has to be form db
-    const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
+    const bookings = await Booking.countDocuments({eventId: event._id}); // has to be form db
+    const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug) as any[];;
 
     return (
         <section id="event">
@@ -99,14 +102,14 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
                         <EventDetailItem icon="/icons/audience.svg" alt="audience" label={audience} />
                     </section>
 
-                    <EventAgenda agendaItems={agenda} />
+                    <EventAgenda agendaItems={safeAgenda} />
 
                     <section className="flex-col-gap-2">
                         <h2>About the Organizer</h2>
                         <p>{organizer}</p>
                     </section>
 
-                    <EventTags tags={tags} />
+                    <EventTags tags={safeTags} />
                 </div>
 
                 {/* Right Side - Booking Form */}

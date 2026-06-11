@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
             { 
                 message: 'event creation failed',
-                error: e instanceof Error ? e.message : 'unknown' 
+                error: 'internal_server_error' 
             },
             { status: 500 }
         );
@@ -119,7 +119,7 @@ export async function GET(){
     catch(e){
         return NextResponse.json({ 
                 message: 'event fetching failed',
-                error: e instanceof Error ? e.message : 'unknown' 
+                error: 'internal_server_error' 
             },
             { status: 500 })
     }

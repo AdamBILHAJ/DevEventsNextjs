@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, context: Context){
     // Strips out keys like $gt, $ne, $where from the input completely
     const cleanSlug = sanitize(trimmedSlug);
     await connectDB()
-    const event = await Event.findOne({slug : cleanSlug})
+    const event = await Event.findOne({slug : cleanSlug}) // findOne: Mongoose method return an array of documents that's why IEvent won't match
     if (!event) {
       return NextResponse.json(
         { message: `Event not found` },
