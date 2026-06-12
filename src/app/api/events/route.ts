@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from 'cloudinary';
 import Event from "@/database/event.model";
 import sanitize from 'mongo-sanitize';
-import DOMPurify from 'isomorphic-dompurify'; // Imported for XSS Protection
+import sanitizeHtml from 'sanitize-html'; // 👈 Swapped here
 
 export async function POST(req: NextRequest) {
     try {
@@ -18,25 +18,24 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Invalid data format' }, { status: 400 });
         }
 
-        // 1. Neutralize NoSQL Injection threats
         const sanitizedEvent = sanitize(rawEvent);
 
-        // 2. Neutralize XSS threats (Sanitize text fields)
-        // Explicitly sanitize rich text or string variables before database persistence
+        // Neutralize XSS threats using server-native sanitize-html
         const textFieldsToSanitize = ['description', 'overview', 'organizer', 'location', 'mode', 'audience'];
         textFieldsToSanitize.forEach((field) => {
             if (typeof sanitizedEvent[field] === 'string') {
-                sanitizedEvent[field] = DOMPurify.sanitize(sanitizedEvent[field]);
+                sanitizedEvent[field] = sanitizeHtml(sanitizedEvent[field], {
+                    allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'img' ]), // customize if you allow rich text tags
+                });
             }
         });
 
-        // Handle Image upload checks safely
         const rawImage = formData.get('image');
         if (!rawImage) {
             return NextResponse.json({ message: 'image required' }, { status: 400 });
         }
 
-        const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+        const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
         const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
         if (rawImage instanceof File && rawImage.size > 0) {
@@ -61,33 +60,29 @@ export async function POST(req: NextRequest) {
 
             sanitizedEvent.image = (uploadResult as { secure_url: string }).secure_url;
         } else {
-            // If it's a raw string URL passed manually, sanitize it to prevent javascript: pseudo-protocol XSS
-            sanitizedEvent.image = DOMPurify.sanitize(rawImage.toString());
+            // Clean plain string URLs cleanly
+            sanitizedEvent.image = sanitizeHtml(rawImage.toString());
         }
 
-        // 3. Handle array parsing securely
         const processArrayField = (fieldName: string) => {
             if (!formData.has(fieldName)) return undefined;
-            
             const rawElements = formData.getAll(fieldName);
             
-            // Check if the first element is a stringified JSON array wrapper
             if (rawElements.length === 1 && typeof rawElements[0] === 'string' && rawElements[0].trim().startsWith('[')) {
                 try {
                     const parsedArray = JSON.parse(rawElements[0]);
                     if (Array.isArray(parsedArray)) {
-                        return parsedArray.map(item => DOMPurify.sanitize(sanitize(item).toString()));
+                        return parsedArray.map(item => sanitizeHtml(sanitize(item).toString()));
                     }
-                } catch { /* Fallback to standard mapping if parsing fails */ }
+                } catch { /* Fallback */ }
             }
             
-            return rawElements.map(item => DOMPurify.sanitize(sanitize(item).toString()));  
+            return rawElements.map(item => sanitizeHtml(sanitize(item).toString()));  
         };
 
         if (formData.has('agenda')) sanitizedEvent.agenda = processArrayField('agenda');
         if (formData.has('tags')) sanitizedEvent.tags = processArrayField('tags');
 
-        // 4. Create the document safely using the fully cleaned data object
         const createdEvent = await Event.create(sanitizedEvent);
 
         return NextResponse.json(
@@ -98,29 +93,18 @@ export async function POST(req: NextRequest) {
     } catch (e) {
         console.error("API Error:", e);
         return NextResponse.json(
-            { 
-                message: 'event creation failed',
-                error: 'internal_server_error' 
-            },
+            { message: 'event creation failed', error: 'internal_server_error' },
             { status: 500 }
         );
     }
 }
+
 export async function GET(){
-    try{
-        await connectDB()
-        const events = await Event.find().sort({createdAt: -1})
-        return NextResponse.json({
-            message : 'event fetched successfully',
-            events
-        },
-    {status: 200})
-    }
-    catch(e){
-        return NextResponse.json({ 
-                message: 'event fetching failed',
-                error: 'internal_server_error' 
-            },
-            { status: 500 })
+    try {
+        await connectDB();
+        const events = await Event.find().sort({createdAt: -1});
+        return NextResponse.json({ message : 'event fetched successfully', events }, {status: 200});
+    } catch(e) {
+        return NextResponse.json({ message: 'event fetching failed', error: 'internal_server_error' }, { status: 500 });
     }
 }
