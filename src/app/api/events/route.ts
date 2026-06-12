@@ -105,6 +105,7 @@ export async function GET(){
         const events = await Event.find().sort({createdAt: -1});
         return NextResponse.json({ message : 'event fetched successfully', events }, {status: 200});
     } catch(e) {
+        console.error("Database Fetch Error:", e);
         return NextResponse.json({ message: 'event fetching failed', error: 'internal_server_error' }, { status: 500 });
     }
 }
