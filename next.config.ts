@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: ["localhost:3000", "http://localhost:3000"]
   } as any,*/
   /* config options here */
+  experimental: {
+    serverExternalPackages: ['jsdom'],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
