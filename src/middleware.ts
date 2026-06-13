@@ -1,4 +1,3 @@
-// middleware.ts
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
@@ -10,35 +9,40 @@ const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
 export default clerkMiddleware(async (auth, req) => {
   const session = await auth();
   const role = session.sessionClaims?.metadata?.role;
-  const { pathname, searchParams } = req.nextUrl;
+  const { searchParams } = req.nextUrl;
 
-  // Rule A: If trying to access /sign-in or /sign-up
+  // --------------------------------------------------------
+  // Rule A: Handing /sign-in and /sign-up attempts
+  // --------------------------------------------------------
   if (isAuthRoute(req)) {
     // If they are already an authenticated admin, send them straight to dashboard
     if (session.userId && role === 'admin') {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
 
-    // Crucial Guard: To allow you to log in, we MUST let the request pass through 
-    // IF it originates from trying to access the admin panel (Clerk appends redirect_url)
-    const hasAdminRedirect = searchParams.get('redirect_url')?.includes('/admin');
+    // Decode the redirect_url parameter to look for admin intent
+    const rawRedirect = searchParams.get('redirect_url') || '';
+    const decodedRedirect = decodeURIComponent(rawRedirect);
+    const hasAdminRedirect = decodedRedirect.includes('/admin');
     
-    // If it's a random guest typing /sign-in manually from the base URL without an admin redirect intent
+    // CHANGE: If a random guest types /sign-in or /sign-up manually, return a 404
     if (!session.userId && !hasAdminRedirect) {
-      return NextResponse.redirect(new URL('/', req.url));
+      return new NextResponse(null, { status: 404 });
     }
   }
 
+  // --------------------------------------------------------
   // Rule B: Standard protection for /admin and API mutations
+  // --------------------------------------------------------
   if (isAdminRoute(req) || (isEventMutationRoute(req) && req.method !== 'GET')) {
     // Guard 1: If they aren't logged in at all, force redirect to sign-in
     if (!session.userId) {
-      return session.redirectToSignIn();
+      return session.redirectToSignIn({ returnBackUrl: req.url });
     }
 
-    // Guard 2: Check for the custom admin role claim
+    // CHANGE: If they are logged into Clerk but DO NOT have the admin role, return a 404
     if (role !== 'admin') {
-      return new NextResponse('Forbidden: Admin access required', { status: 403 });
+      return new NextResponse(null, { status: 404 });
     }
   }
 
@@ -47,7 +51,9 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
+    // Skip Next.js internals and all static files
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 };
