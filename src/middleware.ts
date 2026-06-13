@@ -23,7 +23,7 @@ export default clerkMiddleware(async (auth, req) => {
     // Decode the redirect_url parameter to look for admin intent
     const rawRedirect = searchParams.get('redirect_url') || '';
     const decodedRedirect = decodeURIComponent(rawRedirect);
-    const hasAdminRedirect = decodedRedirect.includes('/admin');
+    const hasAdminRedirect = decodedRedirect.endsWith('/admin');
     
     // CHANGE: If a random guest types /sign-in or /sign-up manually, return a 404
     if (!session.userId && !hasAdminRedirect) {

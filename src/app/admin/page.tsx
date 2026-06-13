@@ -207,7 +207,7 @@ useEffect(() => {
                         type="date" 
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-100 text-sm focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all [color-scheme:dark]" 
+                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-100 text-sm focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all [scheme-dark]" 
                         required 
                       />
                       <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-neutral-500 pointer-events-none" />
@@ -220,7 +220,7 @@ useEffect(() => {
                         type="time" 
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-100 text-sm focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all [color-scheme:dark]" 
+                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-100 text-sm focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all [scheme-dark]" 
                         required 
                       />
                       <Clock className="absolute left-3 top-2.5 h-4 w-4 text-neutral-500 pointer-events-none" />
