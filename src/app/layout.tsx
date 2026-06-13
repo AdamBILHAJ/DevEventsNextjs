@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import LightRays from "../components/LightRays"
 import NavBar from "@/components/NavBar";
+import { ClerkProvider } from '@clerk/nextjs'
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -28,6 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    <ClerkProvider>
     <html
       lang="en"
       className={cn("min-h-screen", "antialiased", schibstedGrotesk.variable, martianMono.variable, "font-sans", geist.variable)}
@@ -50,5 +52,6 @@ export default function RootLayout({
           </div>
         {children}</body>
     </html>
+    </ClerkProvider>
   );
 }
