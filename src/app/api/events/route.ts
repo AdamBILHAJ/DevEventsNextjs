@@ -10,29 +10,38 @@ export async function POST(req: NextRequest) {
         await connectDB();
 
         const formData = await req.formData();
-        let rawEvent: Record<string, any>;
+        
+        // 1. Build a clean payload map explicitly to preserve Mongoose validation hooks
+        const body: Record<string, any> = {
+            title: formData.get('title'),
+            description: formData.get('description'),
+            overview: formData.get('overview'),
+            venue: formData.get('venue'),
+            location: formData.get('location'),
+            date: formData.get('date'),
+            time: formData.get('time'),
+            mode: formData.get('mode'),
+            audience: formData.get('audience'),
+            organizer: formData.get('organizer'),
+        };
 
-        try {
-            rawEvent = Object.fromEntries(formData.entries());
-        } catch (e) {
-            return NextResponse.json({ message: 'Invalid data format' }, { status: 400 });
-        }
+        // Deep sanitize parameters against query injection
+        const sanitizedEvent = sanitize(body);
 
-        const sanitizedEvent = sanitize(rawEvent);
-
-        // Neutralize XSS threats using server-native sanitize-html
-        const textFieldsToSanitize = ['description', 'overview', 'organizer', 'location', 'mode', 'audience'];
+        // 2. Added 'title' and 'venue' to the explicit XSS neutralization array
+        const textFieldsToSanitize = ['title', 'venue', 'description', 'overview', 'organizer', 'location', 'mode', 'audience'];
         textFieldsToSanitize.forEach((field) => {
             if (typeof sanitizedEvent[field] === 'string') {
-                sanitizedEvent[field] = sanitizeHtml(sanitizedEvent[field], {
-                    allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'img' ]), // customize if you allow rich text tags
+                sanitizedEvent[field] = sanitizeHtml(sanitizedEvent[field].trim(), {
+                    allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'img' ]),
                 });
             }
         });
 
+        // 3. Process image parameters safely
         const rawImage = formData.get('image');
         if (!rawImage) {
-            return NextResponse.json({ message: 'image required' }, { status: 400 });
+            return NextResponse.json({ message: 'Image is required' }, { status: 400 });
         }
 
         const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -40,60 +49,76 @@ export async function POST(req: NextRequest) {
 
         if (rawImage instanceof File && rawImage.size > 0) {
             if (rawImage.size > MAX_IMAGE_BYTES) {
-                return NextResponse.json({ message: 'image too large' }, { status: 413 });
+                return NextResponse.json({ message: 'Image is too large (Max 5MB)' }, { status: 413 });
             }
             if (!ALLOWED_IMAGE_TYPES.has(rawImage.type)) {
-                return NextResponse.json({ message: 'unsupported image type' }, { status: 400 });
+                return NextResponse.json({ message: 'Unsupported image type' }, { status: 400 });
             }
+            
             const arrayBuffer = await rawImage.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
 
-            const uploadResult = await new Promise((resolve, reject) => {
-                cloudinary.uploader.upload_stream(
-                    { resource_type: 'image', folder: 'events' },
-                    (error, results) => {
-                        if (error) return reject(error);
-                        resolve(results);
-                    }
-                ).end(buffer);
-            });
-
-            sanitizedEvent.image = (uploadResult as { secure_url: string }).secure_url;
+            try {
+                const uploadResult = await new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        { resource_type: 'image', folder: 'events' },
+                        (error, results) => {
+                            if (error) reject(error);
+                            else resolve(results);
+                        }
+                    );
+                    uploadStream.end(buffer);
+                });
+                sanitizedEvent.image = (uploadResult as { secure_url: string }).secure_url;
+            } catch (uploadError) {
+                console.error("Cloudinary Upload Failure:", uploadError);
+                return NextResponse.json({ message: 'Image upload failed' }, { status: 502 });
+            }
         } else {
-            // Clean plain string URLs cleanly
-            sanitizedEvent.image = sanitizeHtml(rawImage.toString());
+            sanitizedEvent.image = sanitizeHtml(rawImage.toString().trim());
         }
 
+        // 4. Isolated Array processing helper safely separate from object entry mutation risks
         const processArrayField = (fieldName: string) => {
-            if (!formData.has(fieldName)) return undefined;
+            if (!formData.has(fieldName)) return [];
             const rawElements = formData.getAll(fieldName);
             
             if (rawElements.length === 1 && typeof rawElements[0] === 'string' && rawElements[0].trim().startsWith('[')) {
                 try {
                     const parsedArray = JSON.parse(rawElements[0]);
                     if (Array.isArray(parsedArray)) {
-                        return parsedArray.map(item => sanitizeHtml(sanitize(item).toString()));
+                        return parsedArray.map(item => sanitizeHtml(sanitize(item).toString().trim()));
                     }
                 } catch { /* Fallback */ }
             }
             
-            return rawElements.map(item => sanitizeHtml(sanitize(item).toString()));  
+            return rawElements
+                .filter(item => item.toString().trim() !== '')
+                .map(item => sanitizeHtml(sanitize(item).toString().trim()));  
         };
 
-        if (formData.has('agenda')) sanitizedEvent.agenda = processArrayField('agenda');
-        if (formData.has('tags')) sanitizedEvent.tags = processArrayField('tags');
+        sanitizedEvent.agenda = processArrayField('agenda');
+        sanitizedEvent.tags = processArrayField('tags');
 
+        // 5. Attempt creation. If schema rules fail, catch blocks throw localized strings
         const createdEvent = await Event.create(sanitizedEvent);
 
         return NextResponse.json(
-            { message: 'event created successfully', event: createdEvent },
+            { message: 'Event created successfully', event: createdEvent },
             { status: 201 }
         );
 
-    } catch (e) {
+    } catch (e: any) {
         console.error("API Error:", e);
+        
+        // Return clear validation message strings if Mongoose throws an error
+        if (e.name === 'ValidationError') {
+            const messages = Object.values(e.errors).map((err: any) => err.message);
+            return NextResponse.json({ message: messages.join(', ') }, { status: 400 });
+        }
+
         return NextResponse.json(
-            { message: 'event creation failed', error: 'internal_server_error' },
+            { message: 'Event creation failed', error: 'internal_server_error' },
             { status: 500 }
         );
     }
