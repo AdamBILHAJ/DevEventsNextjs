@@ -11,6 +11,7 @@ const BookEvent = ({ eventId, slug }: { eventId: string, slug: string;}) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        /*
         const { success } = await createBooking({ eventId, slug, email });
 
         if(success) {
@@ -20,6 +21,7 @@ const BookEvent = ({ eventId, slug }: { eventId: string, slug: string;}) => {
             console.error('Booking creation failed')
             posthog.captureException('Booking creation failed')
         }
+            */
     }
 
     return (
@@ -35,7 +37,7 @@ const BookEvent = ({ eventId, slug }: { eventId: string, slug: string;}) => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             id="email"
-                            placeholder="Enter your email address"
+                            placeholder="currently blocked for security reasons"
                         />
                     </div>
 
