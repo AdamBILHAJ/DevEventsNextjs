@@ -32,9 +32,7 @@ export default function RootLayout({
       lang="en"
       className={cn("min-h-screen", "antialiased", schibstedGrotesk.variable, martianMono.variable, "font-sans", geist.variable)}
     >
-       
       <body className="min-h-full flex flex-col">
-        <NavBar/>
       <div className="absolute inset-0 top-0 z-[-1] min-h-screen">
               <LightRays
                   raysOrigin="top-center-offset"

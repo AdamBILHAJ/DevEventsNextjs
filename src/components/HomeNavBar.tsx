@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 
-const Navbar = () => {
+const HomeNavbar = () => {
+
     return (
         <header>
             <nav>
@@ -9,11 +10,9 @@ const Navbar = () => {
                     <Image src="/icons/logo.png" alt="logo" width={24} height={24} />
                     <p>DevEvent</p>
                 </Link>
-
-                            <Link href="/">Home</Link>
             </nav>
         </header>
     );
 };
 
-export default Navbar;
+export default HomeNavbar;

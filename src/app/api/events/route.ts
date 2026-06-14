@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
         await connectDB();
 
         const formData = await req.formData();
+        // Holds dynamic form fields as key-value pairs before sanitation and Mongoose validation
         let rawEvent: Record<string, any>;
 
         try {
@@ -25,8 +26,7 @@ export async function POST(req: NextRequest) {
         textFieldsToSanitize.forEach((field) => {
             if (typeof sanitizedEvent[field] === 'string') {
                 sanitizedEvent[field] = sanitizeHtml(sanitizedEvent[field], {
-                    allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'img' ]), // customize if you allow rich text tags
-                });
+                });// removed allowed tags because we don't use rich text editors
             }
         });
 
